@@ -17,7 +17,7 @@ const values = [
   },
   {
     icon: Users,
-    title: 'A team that equips your people — not replaces them',
+    title: 'A team that equips your people — not one that replaces them ',
   },
 ];
 

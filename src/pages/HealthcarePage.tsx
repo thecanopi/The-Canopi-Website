@@ -82,7 +82,7 @@ const sectors = [
     items: [
       'Public Health Organisations',
       'Community Health Centres',
-      'Non-Profit Hospitals',
+      'Nonprofit Hospitals',
       'NGOs and Foundations Focused on Health Equity',
       'Population Health and Community Care Programmes',
     ],

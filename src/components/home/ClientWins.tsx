@@ -8,13 +8,13 @@ const wins = [
     icon: TrendingDown,
     stat: 18,
     suffix: '%',
-    description: 'Reduced operating costs for a regional health system within 9 months',
+    description: 'Reduced operating costs for a regional health system in 9 months',
   },
   {
     icon: Users,
     stat: 250,
     suffix: 'k',
-    description: 'Users reached in first year with a digital care platform launch',
+    description: 'Users reached in the first year following a digital care platform launch',
   },
   {
     icon: TrendingUp,
@@ -27,7 +27,7 @@ const wins = [
     stat: 100,
     suffix: '%',
     prefix: '',
-    description: 'Enterprise-wide AI adoption enabled through data governance model',
+    description: 'Enterprise-wide AI adoption enabled through a data governance model',
   },
 ];
 

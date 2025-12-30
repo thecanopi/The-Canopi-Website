@@ -14,8 +14,8 @@ const values = [
 
 const timeline = [
   { year: 'The Beginning', title: 'Founded by Visionaries', description: 'Canopi began as a small advisory practice founded by strategists who had spent their careers inside large consulting firms and fast-growing startups.' },
-  { year: 'The Gap', title: 'Identifying the Need', description: 'They saw a gap: leaders needed top-tier strategic clarity, but also hands-on partners who could help bring ideas to life — not just leave behind decks.' },
-  { year: 'Growth', title: 'Expanding Our Reach', description: 'What started as a 2-person advisory is now a multi-disciplinary firm working with clients across healthcare, technology, consumer services, and mission-driven sectors.' },
+  { year: 'The Gap', title: 'Identifying the Need', description: 'We saw a gap: leaders needed top-tier strategic clarity, but also hands-on partners who could help bring ideas to life — not just leave behind decks.' },
+  { year: 'Growth', title: 'Expanding Our Reach', description: 'What started as a two-person advisory is now a multi-disciplinary firm working with clients across healthcare, technology, consumer services, and mission-driven sectors.' },
   { year: 'Today', title: 'Our Foundation', description: 'We remain grounded in our founding belief: great consulting is not just about expertise — it is about empathy, precision, and partnership.' },
 ];
 
@@ -92,7 +92,7 @@ export default function AboutPage() {
                 <div className="flex items-center justify-center gap-8 mt-12">
                   <div className="text-center">
                     <div className="text-4xl font-bold text-gold">10+</div>
-                    <div className="text-white/60 text-sm">Years Experience</div>
+                    <div className="text-white/60 text-sm">Years of Experience</div>
                   </div>
                   <div className="w-px h-12 bg-white/20" />
                   <div className="text-center">
@@ -134,8 +134,7 @@ export default function AboutPage() {
                       a balanced blend of creativity, analytical discipline, and execution strength.
                     </p>
                     <p className="text-lg text-foreground/70 leading-relaxed">
-                      We believe the consulting firms of the future won't just deliver recommendations — they 
-                      will build capabilities, embed intelligence, and move at the speed of change.
+                      We believe the consulting firms of the future won’t just deliver recommendations — they will build capabilities, embed intelligence, and move at the speed of change.
                     </p>
                   </div>
                 </RevealOnScroll>

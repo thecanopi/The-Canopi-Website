@@ -38,8 +38,7 @@ export function Footer() {
               />
             </Link>
             <p className="text-primary-foreground/80 max-w-md leading-relaxed text-sm">
-              Canopi partners with you to overcome challenges and unlock growth. Our experts bring your vision to life
-              with precision for sustainable success and measurable results.
+              Canopi partners with you to overcome challenges and unlock growth. Our experts bring your vision to life with precision, driving sustainable success and measurable results.
             </p>
             <div className="flex gap-3">
               <a

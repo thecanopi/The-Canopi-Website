@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Lock, Mail, ArrowLeft } from 'lucide-react';
 import { z } from 'zod';
-import logo from '@/assets/logo.jpg';
+import logo from '@/assets/logo-canopi.png';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
