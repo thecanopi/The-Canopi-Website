@@ -31,6 +31,10 @@ app.get("/api/ping", (req, res) => {
   res.json({ ok: true, message: "API working" });
 });
 
+app.get("/ping", (req, res) => {
+  res.json({ ok: true, message: "API working" });
+});
+
 /**
  * Example secure DB route:
  * GET /api/profile-count -> counts rows from a table (change table name)

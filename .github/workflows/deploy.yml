@@ -54,6 +54,6 @@ jobs:
           port: 22
           script: |
             cd /var/www/canopi-server
-            npm ci --omit=dev
+            npm install --omit=dev
             sudo systemctl restart canopi-api
             sudo systemctl status canopi-api --no-pager || true
