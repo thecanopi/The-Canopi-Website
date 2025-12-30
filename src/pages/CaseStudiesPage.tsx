@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { ChevronDown, Quote, Sparkles, Target, TrendingUp, Building2, Zap, ArrowRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -244,27 +243,23 @@ export default function CaseStudiesPage() {
   const { data: caseStudies, isLoading } = useQuery({
     queryKey: ['case-studies'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('case_studies')
-        .select('*')
-        .eq('is_published', true)
-        .order('display_order', { ascending: true });
-      if (error) throw error;
-      return data as CaseStudy[];
-    },
+  const res = await fetch("/api/case-studies");
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || "Failed to load case studies");
+  return (json.data || []) as CaseStudy[];
+},
+
   });
 
   const { data: testimonials, isLoading: testimonialsLoading } = useQuery({
     queryKey: ['testimonials'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('testimonials')
-        .select('*')
-        .eq('is_published', true)
-        .order('display_order', { ascending: true });
-      if (error) throw error;
-      return data;
-    },
+  const res = await fetch("/api/testimonials");
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || "Failed to load testimonials");
+  return json.data || [];
+},
+
   });
 
   const handleToggle = (id: string) => {
