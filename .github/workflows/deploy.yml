@@ -1,4 +1,4 @@
-name: Deploy Frontend to VPS (Nginx)
+name: Deploy Frontend + Backend to VPS
 
 on:
   push:
@@ -17,13 +17,13 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install dependencies
+      - name: Install dependencies (frontend)
         run: npm ci
 
-      - name: Build
+      - name: Build frontend
         run: npm run build
 
-      - name: Upload dist to VPS via SCP
+      - name: Upload frontend dist to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -33,3 +33,27 @@ jobs:
           source: "dist/*"
           target: "/var/www/canopi"
           overwrite: true
+
+      - name: Upload backend server to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          source: "server/*"
+          target: "/var/www/canopi-server"
+          overwrite: true
+
+      - name: Install backend deps & restart API
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            cd /var/www/canopi-server
+            npm ci --omit=dev
+            sudo systemctl restart canopi-api
+            sudo systemctl status canopi-api --no-pager || true
