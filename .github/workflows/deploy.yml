@@ -32,4 +32,4 @@ jobs:
           port: 22
           source: "dist/*"
           target: "/var/www/canopi"
-          rm: true
+          overwrite: true
