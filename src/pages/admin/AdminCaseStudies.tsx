@@ -1,20 +1,15 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Pencil, Trash2, GripVertical } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AdminLayout } from "@/components/admin/AdminLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent } from "@/components/ui/card";
+import { Plus, Pencil, Trash2, GripVertical } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAuth } from "@/hooks/useAuth";
 
 interface CaseStudy {
   id: string;
@@ -29,91 +24,115 @@ interface CaseStudy {
 }
 
 const emptyCaseStudy = {
-  title: '',
-  challenge: '',
-  solution: '',
-  outcome: '',
-  industry: '',
+  title: "",
+  challenge: "",
+  solution: "",
+  outcome: "",
+  industry: "",
   tags: [] as string[],
   is_published: true,
 };
 
+async function apiFetch<T>(url: string, token: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(init?.headers || {}),
+    },
+  });
+
+  const json = await res.json().catch(() => ({} as any));
+  if (!res.ok) throw new Error(json?.error || "Request failed");
+  return json as T;
+}
+
 export default function AdminCaseStudies() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { session } = useAuth();
+  const token = session?.access_token || "";
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CaseStudy | null>(null);
   const [formData, setFormData] = useState(emptyCaseStudy);
-  const [tagsInput, setTagsInput] = useState('');
+  const [tagsInput, setTagsInput] = useState("");
 
   const { data: caseStudies, isLoading } = useQuery({
-    queryKey: ['admin-case-studies'],
+    queryKey: ["admin-case-studies"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('case_studies')
-        .select('*')
-        .order('display_order', { ascending: true });
-      if (error) throw error;
-      return data as CaseStudy[];
+      const json = await apiFetch<{ ok: true; data: CaseStudy[] }>("/api/admin/case-studies", token);
+      return json.data;
     },
+    enabled: !!token,
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from('case_studies').insert([{
+      const payload = {
         ...data,
         tags: data.tags.length > 0 ? data.tags : null,
         industry: data.industry || null,
-      }]);
-      if (error) throw error;
+      };
+
+      await apiFetch<{ ok: true; data: any }>("/api/admin/case-studies", token, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
     },
     onSuccess: () => {
-      toast({ title: 'Case study created successfully' });
-      queryClient.invalidateQueries({ queryKey: ['admin-case-studies'] });
+      toast({ title: "Case study created successfully" });
+      queryClient.invalidateQueries({ queryKey: ["admin-case-studies"] });
       handleCloseDialog();
     },
-    onError: (error) => {
-      toast({ title: 'Error creating case study', description: error.message, variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: "Error creating case study", description: error.message, variant: "destructive" });
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
-      const { error } = await supabase.from('case_studies').update({
+      const payload = {
         ...data,
         tags: data.tags.length > 0 ? data.tags : null,
         industry: data.industry || null,
-      }).eq('id', id);
-      if (error) throw error;
+      };
+
+      await apiFetch<{ ok: true; data: any }>(`/api/admin/case-studies/${id}`, token, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
     },
     onSuccess: () => {
-      toast({ title: 'Case study updated successfully' });
-      queryClient.invalidateQueries({ queryKey: ['admin-case-studies'] });
+      toast({ title: "Case study updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["admin-case-studies"] });
       handleCloseDialog();
     },
-    onError: (error) => {
-      toast({ title: 'Error updating case study', description: error.message, variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: "Error updating case study", description: error.message, variant: "destructive" });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('case_studies').delete().eq('id', id);
-      if (error) throw error;
+      await apiFetch<{ ok: true }>(`/api/admin/case-studies/${id}`, token, {
+        method: "DELETE",
+      });
     },
     onSuccess: () => {
-      toast({ title: 'Case study deleted successfully' });
-      queryClient.invalidateQueries({ queryKey: ['admin-case-studies'] });
+      toast({ title: "Case study deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["admin-case-studies"] });
     },
-    onError: (error) => {
-      toast({ title: 'Error deleting case study', description: error.message, variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: "Error deleting case study", description: error.message, variant: "destructive" });
     },
   });
 
   const handleOpenCreate = () => {
     setEditingItem(null);
     setFormData(emptyCaseStudy);
-    setTagsInput('');
+    setTagsInput("");
     setIsDialogOpen(true);
   };
 
@@ -124,11 +143,11 @@ export default function AdminCaseStudies() {
       challenge: item.challenge,
       solution: item.solution,
       outcome: item.outcome,
-      industry: item.industry || '',
+      industry: item.industry || "",
       tags: item.tags || [],
       is_published: item.is_published ?? true,
     });
-    setTagsInput(item.tags?.join(', ') || '');
+    setTagsInput(item.tags?.join(", ") || "");
     setIsDialogOpen(true);
   };
 
@@ -136,12 +155,17 @@ export default function AdminCaseStudies() {
     setIsDialogOpen(false);
     setEditingItem(null);
     setFormData(emptyCaseStudy);
-    setTagsInput('');
+    setTagsInput("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const tags = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
+
+    const tags = tagsInput
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+
     const data = { ...formData, tags };
 
     if (editingItem) {
@@ -172,7 +196,7 @@ export default function AdminCaseStudies() {
         ) : caseStudies && caseStudies.length > 0 ? (
           <div className="space-y-4">
             {caseStudies.map((item) => (
-              <Card key={item.id} className={!item.is_published ? 'opacity-60' : ''}>
+              <Card key={item.id} className={!item.is_published ? "opacity-60" : ""}>
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
                     <GripVertical className="h-5 w-5 text-muted-foreground mt-1 cursor-grab" />
@@ -188,18 +212,12 @@ export default function AdminCaseStudies() {
                         </div>
                         <div className="flex items-center gap-2">
                           {!item.is_published && (
-                            <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded">
-                              Draft
-                            </span>
+                            <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded">Draft</span>
                           )}
                           <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteMutation.mutate(item.id)}
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(item.id)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -223,17 +241,15 @@ export default function AdminCaseStudies() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingItem ? 'Edit Case Study' : 'Add Case Study'}</DialogTitle>
+              <DialogTitle>{editingItem ? "Edit Case Study" : "Add Case Study"}</DialogTitle>
             </DialogHeader>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Title *</label>
-                <Input
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
-                />
+                <Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
               </div>
+
               <div>
                 <label className="text-sm font-medium">Industry</label>
                 <Input
@@ -242,6 +258,7 @@ export default function AdminCaseStudies() {
                   placeholder="e.g., Healthcare, Technology, Finance"
                 />
               </div>
+
               <div>
                 <label className="text-sm font-medium">Challenge *</label>
                 <Textarea
@@ -251,6 +268,7 @@ export default function AdminCaseStudies() {
                   required
                 />
               </div>
+
               <div>
                 <label className="text-sm font-medium">Solution *</label>
                 <Textarea
@@ -260,6 +278,7 @@ export default function AdminCaseStudies() {
                   required
                 />
               </div>
+
               <div>
                 <label className="text-sm font-medium">Outcome *</label>
                 <Textarea
@@ -269,6 +288,7 @@ export default function AdminCaseStudies() {
                   required
                 />
               </div>
+
               <div>
                 <label className="text-sm font-medium">Tags (comma separated)</label>
                 <Input
@@ -277,24 +297,18 @@ export default function AdminCaseStudies() {
                   placeholder="e.g., AI, Digital Transformation, Strategy"
                 />
               </div>
+
               <div className="flex items-center gap-3">
-                <Switch
-                  checked={formData.is_published}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_published: checked })}
-                />
+                <Switch checked={formData.is_published} onCheckedChange={(checked) => setFormData({ ...formData, is_published: checked })} />
                 <label className="text-sm font-medium">Published</label>
               </div>
+
               <div className="flex gap-3 pt-4">
                 <Button type="button" variant="outline" onClick={handleCloseDialog} className="flex-1">
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  variant="gold"
-                  className="flex-1"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                >
-                  {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save'}
+                <Button type="submit" variant="gold" className="flex-1" disabled={createMutation.isPending || updateMutation.isPending}>
+                  {createMutation.isPending || updateMutation.isPending ? "Saving..." : "Save"}
                 </Button>
               </div>
             </form>

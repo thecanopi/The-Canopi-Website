@@ -1,67 +1,55 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, MessageSquare, Users, Calendar, Mail, Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import { useQuery } from "@tanstack/react-query";
+import { AdminLayout } from "@/components/admin/AdminLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileText, MessageSquare, Users, Calendar, Mail, Clock } from "lucide-react";
+import { format } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
+
+type DashboardResponse = {
+  ok: true;
+  stats: {
+    caseStudies: number;
+    testimonials: number;
+    teamMembers: number;
+    pendingMeetings: number;
+    unreadInquiries: number;
+  };
+  recentInquiries: any[];
+  upcomingMeetings: any[];
+};
 
 export default function AdminDashboard() {
-  // Fetch stats
-  const { data: stats } = useQuery({
-    queryKey: ['admin-stats'],
-    queryFn: async () => {
-      const [caseStudies, testimonials, teamMembers, pendingMeetings, unreadInquiries] = await Promise.all([
-        supabase.from('case_studies').select('id', { count: 'exact' }),
-        supabase.from('testimonials').select('id', { count: 'exact' }),
-        supabase.from('team_members').select('id', { count: 'exact' }),
-        supabase.from('meeting_requests').select('id', { count: 'exact' }).eq('status', 'pending'),
-        supabase.from('contact_inquiries').select('id', { count: 'exact' }).eq('is_read', false),
-      ]);
+  const { session } = useAuth();
 
-      return {
-        caseStudies: caseStudies.count ?? 0,
-        testimonials: testimonials.count ?? 0,
-        teamMembers: teamMembers.count ?? 0,
-        pendingMeetings: pendingMeetings.count ?? 0,
-        unreadInquiries: unreadInquiries.count ?? 0,
-      };
+  const { data } = useQuery({
+    queryKey: ["admin-dashboard"],
+    queryFn: async (): Promise<DashboardResponse> => {
+      const token = session?.access_token;
+      if (!token) throw new Error("Not authenticated");
+
+      const res = await fetch("/api/admin/dashboard", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Failed to load dashboard");
+      return json;
     },
+    enabled: !!session?.access_token,
   });
 
-  // Fetch recent inquiries
-  const { data: recentInquiries } = useQuery({
-    queryKey: ['recent-inquiries'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('contact_inquiries')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      return data ?? [];
-    },
-  });
-
-  // Fetch upcoming meetings
-  const { data: upcomingMeetings } = useQuery({
-    queryKey: ['upcoming-meetings'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('meeting_requests')
-        .select('*, meeting_slots(*)')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      return data ?? [];
-    },
-  });
+  const stats = data?.stats;
 
   const statCards = [
-    { label: 'Case Studies', value: stats?.caseStudies ?? 0, icon: FileText, color: 'text-blue-500' },
-    { label: 'Testimonials', value: stats?.testimonials ?? 0, icon: MessageSquare, color: 'text-green-500' },
-    { label: 'Team Members', value: stats?.teamMembers ?? 0, icon: Users, color: 'text-purple-500' },
-    { label: 'Pending Meetings', value: stats?.pendingMeetings ?? 0, icon: Calendar, color: 'text-gold' },
-    { label: 'Unread Inquiries', value: stats?.unreadInquiries ?? 0, icon: Mail, color: 'text-red-500' },
+    { label: "Case Studies", value: stats?.caseStudies ?? 0, icon: FileText, color: "text-blue-500" },
+    { label: "Testimonials", value: stats?.testimonials ?? 0, icon: MessageSquare, color: "text-green-500" },
+    { label: "Team Members", value: stats?.teamMembers ?? 0, icon: Users, color: "text-purple-500" },
+    { label: "Pending Meetings", value: stats?.pendingMeetings ?? 0, icon: Calendar, color: "text-gold" },
+    { label: "Unread Inquiries", value: stats?.unreadInquiries ?? 0, icon: Mail, color: "text-red-500" },
   ];
+
+  const recentInquiries = data?.recentInquiries ?? [];
+  const upcomingMeetings = data?.upcomingMeetings ?? [];
 
   return (
     <AdminLayout>
@@ -98,16 +86,16 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {recentInquiries && recentInquiries.length > 0 ? (
+              {recentInquiries.length > 0 ? (
                 <div className="space-y-4">
-                  {recentInquiries.map((inquiry) => (
+                  {recentInquiries.map((inquiry: any) => (
                     <div key={inquiry.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className={`w-2 h-2 rounded-full mt-2 ${inquiry.is_read ? 'bg-muted-foreground' : 'bg-gold'}`} />
+                      <div className={`w-2 h-2 rounded-full mt-2 ${inquiry.is_read ? "bg-muted-foreground" : "bg-gold"}`} />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-primary truncate">{inquiry.name}</p>
                         <p className="text-sm text-muted-foreground truncate">{inquiry.message}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {format(new Date(inquiry.created_at), 'MMM d, yyyy h:mm a')}
+                          {inquiry.created_at ? format(new Date(inquiry.created_at), "MMM d, yyyy h:mm a") : ""}
                         </p>
                       </div>
                     </div>
@@ -119,7 +107,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* Upcoming Meetings */}
+          {/* Pending Meetings */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -128,9 +116,9 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {upcomingMeetings && upcomingMeetings.length > 0 ? (
+              {upcomingMeetings.length > 0 ? (
                 <div className="space-y-4">
-                  {upcomingMeetings.map((meeting) => (
+                  {upcomingMeetings.map((meeting: any) => (
                     <div key={meeting.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                       <Calendar className="h-5 w-5 text-gold mt-0.5" />
                       <div className="flex-1 min-w-0">
@@ -138,8 +126,8 @@ export default function AdminDashboard() {
                         <p className="text-sm text-muted-foreground">{meeting.email}</p>
                         {meeting.meeting_slots && (
                           <p className="text-xs text-gold mt-1">
-                            {format(new Date(meeting.meeting_slots.date), 'MMM d, yyyy')} at{' '}
-                            {meeting.meeting_slots.start_time?.slice(0, 5)}
+                            {meeting.meeting_slots?.date ? format(new Date(meeting.meeting_slots.date), "MMM d, yyyy") : ""}{" "}
+                            {meeting.meeting_slots?.start_time ? `at ${meeting.meeting_slots.start_time.slice(0, 5)}` : ""}
                           </p>
                         )}
                       </div>

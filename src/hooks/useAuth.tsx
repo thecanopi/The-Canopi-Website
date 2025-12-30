@@ -14,21 +14,24 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ✅ Customize admin logic if you want.
-// For now it’s false unless Supabase is enabled and a session exists.
-// (If your project already has an admin rule, tell me and I’ll match it.)
-function computeIsAdmin(user: User | null): boolean {
-  if (!user?.email) return false;
+async function checkAdmin(accessToken: string | undefined | null): Promise<boolean> {
+  if (!accessToken) return false;
 
-  // Example options (choose ONE):
-  // 1) domain-based admin
-  // return user.email.endsWith("@yourdomain.com");
+  try {
+    const res = await fetch("/api/admin/me", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
 
-  // 2) email list-based admin
-  // return ["admin@yourdomain.com"].includes(user.email);
+    // 200 => admin
+    if (res.ok) return true;
 
-  // Default: not admin
-  return false;
+    // 401/403 => not admin
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -38,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 🔒 Supabase disabled in production (keys moved to backend)
+    // If Supabase client isn't configured, auth can't work
     if (!isSupabaseConfigured || !supabase) {
       setIsLoading(false);
       setUser(null);
@@ -47,45 +50,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    let cancelled = false;
+
     // Load initial session
-    supabase.auth
-      .getSession()
-      .then(({ data }) => {
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
         const nextSession = data.session ?? null;
         const nextUser = data.session?.user ?? null;
 
+        if (cancelled) return;
+
         setSession(nextSession);
         setUser(nextUser);
-        setIsAdmin(computeIsAdmin(nextUser));
-      })
-      .finally(() => setIsLoading(false));
+
+        const admin = await checkAdmin(nextSession?.access_token);
+        if (!cancelled) setIsAdmin(admin);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       const nextUser = nextSession?.user ?? null;
 
-      setSession(nextSession);
+      setSession(nextSession ?? null);
       setUser(nextUser);
-      setIsAdmin(computeIsAdmin(nextUser));
+
+      const admin = await checkAdmin(nextSession?.access_token);
+      setIsAdmin(admin);
+
       setIsLoading(false);
     });
 
     return () => {
+      cancelled = true;
       subscription.unsubscribe();
     };
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    if (!supabase) return { error: new Error("Auth is disabled (server mode).") };
+    if (!supabase) return { error: new Error("Auth is disabled (Supabase not configured).") };
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: (error as unknown as Error) ?? null };
   };
 
   const signUp = async (email: string, password: string) => {
-    if (!supabase) return { error: new Error("Auth is disabled (server mode).") };
+    if (!supabase) return { error: new Error("Auth is disabled (Supabase not configured).") };
 
     const redirectUrl = `${window.location.origin}/`;
     const { error } = await supabase.auth.signUp({
