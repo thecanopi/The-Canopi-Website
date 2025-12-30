@@ -19,32 +19,73 @@ function getSupabaseAdmin() {
   if (!serviceRole) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
 
   return createClient(url, serviceRole, {
-    auth: { persistSession: false, autoRefreshToken: false }
+    auth: { persistSession: false, autoRefreshToken: false },
   });
 }
 
 /**
- * Example API route:
- * GET /api/ping -> returns a DB-free response
+ * DB-free ping route (kept for quick checks)
  */
 app.get("/api/ping", (req, res) => {
   res.json({ ok: true, message: "API working" });
 });
 
+// Needed because nginx proxies /api/* to backend root (so /api/ping becomes /ping)
 app.get("/ping", (req, res) => {
   res.json({ ok: true, message: "API working" });
 });
 
 /**
+ * Public: Case Studies
+ * NOTE: We export BOTH /api/case-studies and /case-studies
+ * because nginx is configured to proxy /api/* -> /* on the backend.
+ */
+const caseStudiesHandler = async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+
+    // Keep it simple to ensure data shows; add filters later once confirmed
+    const { data, error } = await supabase.from("case_studies").select("*");
+
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json({ ok: true, data: data ?? [] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message || "Server error" });
+  }
+};
+
+app.get("/api/case-studies", caseStudiesHandler);
+app.get("/case-studies", caseStudiesHandler);
+
+/**
+ * Public: Testimonials
+ * Same dual-route approach as case studies.
+ */
+const testimonialsHandler = async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+
+    const { data, error } = await supabase.from("testimonials").select("*");
+
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json({ ok: true, data: data ?? [] });
+  } catch (e) {
+    return res.status(500).json({ error: e.message || "Server error" });
+  }
+};
+
+app.get("/api/testimonials", testimonialsHandler);
+app.get("/testimonials", testimonialsHandler);
+
+/**
  * Example secure DB route:
  * GET /api/profile-count -> counts rows from a table (change table name)
- * IMPORTANT: This is only an example. We'll customize routes to your real app next.
  */
-app.get("/api/profile-count", async (req, res) => {
+const profileCountHandler = async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { count, error } = await supabase
-      .from("profiles")     // <-- change if your table is different
+      .from("profiles")
       .select("*", { count: "exact", head: true });
 
     if (error) return res.status(500).json({ error: error.message });
@@ -52,7 +93,12 @@ app.get("/api/profile-count", async (req, res) => {
   } catch (e) {
     return res.status(500).json({ error: e.message || "Server error" });
   }
-});
+};
+
+app.get("/api/profile-count", profileCountHandler);
+app.get("/profile-count", profileCountHandler);
 
 const port = Number(process.env.PORT || 5050);
-app.listen(port, "127.0.0.1", () => console.log(`API running on http://127.0.0.1:${port}`));
+app.listen(port, "127.0.0.1", () =>
+  console.log(`API running on http://127.0.0.1:${port}`)
+);
